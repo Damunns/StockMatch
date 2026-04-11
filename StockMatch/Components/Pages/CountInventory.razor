@@ -1,0 +1,47 @@
+﻿@page "/countinventory"
+@using StockMatch.Models
+
+<PageTitle>Count Inventory</PageTitle>
+
+<h3>CountInventory</h3>
+@if (users == null)
+{
+    <p><em>Loading data from Azure...</em></p>
+}
+else
+{
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>EmailUsername</th>
+                <th>LogonUsername</th>
+                <th>FirstName</th>
+                <th>LastName</th>
+                <th>Access</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var user in users)
+            {
+                <tr>
+                    <td>@user.EmailUsername</td>
+                    <td>@user.LogonUsername</td>
+                    <td>@user.FirstName</td>
+                    <td>@user.LastName</td>
+                    <td>@user.Access</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@inject UserService Users
+
+@code {
+    private IEnumerable<Users>? users;
+
+    protected override async Task OnInitializedAsync()
+    {
+        users = await Users.GetAllUsers();
+    }
+}
