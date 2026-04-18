@@ -1,0 +1,116 @@
+﻿body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--bg);
+    color: var(--text);
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+}
+
+.app-container {
+    width: 100%;
+    max-width: 500px;
+    background: var(--card-bg);
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border);
+}
+
+header {
+    margin-bottom: 2rem;
+    border-bottom: 2px solid var(--accent);
+    padding-bottom: 1rem;
+}
+
+h1 {
+    font-size: 1.5rem;
+    margin: 0;
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.status-bar {
+    font-size: 0.8rem;
+    color: #64748b;
+    margin-top: 5px;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.hidden {
+    display: none;
+    opacity: 0;
+    transform: translateY(10px);
+}
+
+.visible {
+    display: block;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+input, select {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 1rem;
+    box-sizing: border-box;
+    outline: none;
+}
+
+    input:focus {
+        border-color: var(--primary);
+        ring: 2px solid #bfdbfe;
+    }
+
+.master-data-preview {
+    background: var(--accent);
+    padding: 10px;
+    border-radius: 6px;
+    margin-top: 5px;
+    font-size: 0.85rem;
+    border-left: 4px solid var(--primary);
+}
+
+.btn-submit {
+    width: 100%;
+    padding: 14px;
+    background-color: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 1rem;
+}
+
+    .btn-submit:hover {
+        background-color: #1d4ed8;
+    }
+
+.badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    background: #dcfce7;
+    color: #166534;
+    font-size: 0.75rem;
+    margin-left: 8px;
+}

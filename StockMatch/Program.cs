@@ -1,4 +1,5 @@
 using StockMatch.Components;
+using StockMatch.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -6,8 +7,9 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-// Add UserService
+// Add Services
 builder.Services.AddScoped<UserService>();
+builder.Services.AddScoped<MaterialService>();
 
 var app = builder.Build();
 

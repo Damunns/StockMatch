@@ -1,47 +1,124 @@
 ﻿@page "/countinventory"
+@rendermode InteractiveServer
 @using StockMatch.Models
+@using StockMatch.Services
+@using System.ComponentModel.DataAnnotations
+@inject MaterialService MaterialService
 
 <PageTitle>Count Inventory</PageTitle>
 
 <h3>CountInventory</h3>
-@if (users == null)
-{
-    <p><em>Loading data from Azure...</em></p>
-}
-else
-{
-    <table class="table table-hover">
-        <thead>
-            <tr>
-                <th>EmailUsername</th>
-                <th>LogonUsername</th>
-                <th>FirstName</th>
-                <th>LastName</th>
-                <th>Access</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var user in users)
-            {
-                <tr>
-                    <td>@user.EmailUsername</td>
-                    <td>@user.LogonUsername</td>
-                    <td>@user.FirstName</td>
-                    <td>@user.LastName</td>
-                    <td>@user.Access</td>
-                </tr>
-            }
-        </tbody>
-    </table>
-}
 
-@inject UserService Users
+<EditForm Model="@count" OnValidSubmit="SubmitCount" FormName="CountInventoryForm">
+    <DataAnnotationsValidator />
+    
+    <div class="mb-3">
+        <label>Storage Location</label>
+        <InputText @bind-Value="count.StorageLocation" class="form-control" placeholder="e.g. WH1" />
+        <ValidationMessage For="() => count.StorageLocation" class="text-danger" />
+    </div>
 
-@code {
-    private IEnumerable<Users>? users;
+    <div class="mb-3">
+        <label>Material</label>
+        <InputText @bind-Value="count.Material" @bind-Value:after="CheckMaterialData" class="form-control" />
+        <ValidationMessage For="() => count.Material" class="text-danger" />
+        @if (isMasterDataLoaded)
+        {
+            <div class="master-data-preview mt-2">
+                <strong>Master data loaded</strong><br />
+                <span class="text-muted">@materialDescription</span>
+            </div>
+        }
+    </div>
+
+    @if (requiresBatch)
+    {
+        <div class="mb-3">
+            <label>Batch</label>
+            <InputText @bind-Value="count.Batch" class="form-control" />
+            <ValidationMessage For="() => count.Batch" class="text-danger" />
+        </div>
+    }
+    
+    @if (requiresSerial)
+    {
+        <div class="mb-3">
+            <label>Serial</label>
+            <InputText @bind-Value="count.Serial" class="form-control" />
+            <ValidationMessage For="() => count.Serial" class="text-danger" />
+        </div>
+    }
+
+    <div class="mb-3">
+        <label>Quantity</label>
+        <InputNumber @bind-Value="count.Quantity" class="form-control" />
+        <ValidationMessage For="() => count.Quantity" class="text-danger" />
+    </div>
+
+    <button type="submit" class="btn btn-primary">Submit count</button>
+    
+    @if (!string.IsNullOrEmpty(statusMessage))
+    {
+        <div class="alert alert-info mt-3">@statusMessage</div>
+    }
+</EditForm>
+
+    @code {
 
     protected override async Task OnInitializedAsync()
     {
-        users = await Users.GetAllUsers();
+        count = new Count();
+    }
+
+    [SupplyParameterFromForm(FormName = "CountInventoryForm")]
+    private Count count { get; set; } = new();
+    private string statusMessage = "";
+    private bool requiresBatch = false;
+    private bool requiresSerial = false;
+    private bool isMasterDataLoaded = false;
+    private string? materialDescription;
+
+    private async Task CheckMaterialData()
+    {
+        if (string.IsNullOrEmpty(count.Material))
+        {
+            requiresBatch = false;
+            requiresSerial = false;
+            isMasterDataLoaded = false;
+            materialDescription = null;
+            return;
+        }
+
+        var materialMaster = await MaterialService.GetMaterialDetails(count.Material);
+        if (materialMaster != null)
+        {
+            requiresBatch = !string.IsNullOrWhiteSpace(materialMaster.BatchRequired);
+            requiresSerial = materialMaster.SerialProfile == "Z100";
+            materialDescription = materialMaster.Description;
+            isMasterDataLoaded = true;
+        }
+        else
+        {
+            requiresBatch = false;
+            requiresSerial = false;
+            materialDescription = null;
+            isMasterDataLoaded = false;
+        }
+    }
+
+    private async Task SubmitCount()
+    {
+        // This is where you would normally call your API.
+        // If the API call fails due to no connection,
+        // you would save 'count' to LocalStorage instead.
+
+        statusMessage = $"Success: Material {count.Material} recorded at {count.StorageLocation}.";
+
+        // Reset the form for the next count
+        count = new Count();
+        requiresBatch = false;
+        requiresSerial = false;
+        isMasterDataLoaded = false;
+        materialDescription = null;
     }
 }

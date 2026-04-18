@@ -3,6 +3,15 @@
     src: url('../fonts/GeneralSans-Variable.woff2') format('woff2');
 }
 
+:root {
+    --primary: #2563eb;
+    --bg: #f8fafc;
+    --card-bg: #ffffff;
+    --text: #1e293b;
+    --border: #e2e8f0;
+    --accent: #f1f5f9;
+}
+
 * {
     font-family: 'General Sans';
 }
