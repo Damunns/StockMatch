@@ -38,6 +38,7 @@ h1:focus {
     display: flex;
     flex-direction: column;
     justify-content: center;
+    gap:20px;
     box-sizing: border-box;
 }
 

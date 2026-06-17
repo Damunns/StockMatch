@@ -3,6 +3,7 @@
 @using StockMatch.Services
 @using StockMatch.Models
 @inject MasterDataService MasterDataService
+@inject NavigationManager NavManager
 
 <PageTitle>Home</PageTitle>
 
@@ -34,14 +35,14 @@
 
                     @foreach (var location in storageLocationsList)
                     {
-                        <option value="@location.StorageLocation">@location.Description</option>
+                        <option value="@location.StorageLocation">@location.StorageLocation - @location.Description</option>
                     }
                 </select>
 
                     <button type="button"
                             class="btn btn-primary w-100"
                             disabled="@string.IsNullOrEmpty(selectLocation.SelectedLocationID)"
-                            @onclick="HandleSubmit">
+                        @onclick='() => HandleSubmit("countwip")'>
                         OK
                     </button>
                 </div>
@@ -59,17 +60,19 @@
                 <div class="menu-layer">
                 <label class="form-label">Select Storage Location:</label>
 
-                <InputSelect @bind-Value="selectLocation.SelectedLocationID" class="form-select mb-3">
-                    <option value="" disabled selected>-- Choose Area --</option>
-                    <option value="BANBURY-A01">Aisle 1 (Raw Materials)</option>
-                    <option value="BANBURY-A02">Aisle 2 (Finished Goods)</option>
-                    <option value="BANBURY-A03">Aisle 3 (Bulk Storage)</option>
-                    </InputSelect>
+                <select class="form-select" @bind="selectLocation.SelectedLocationID">
+                    <option value="" disabled selected>-- Choose a Storage Location --</option>
+
+                    @foreach (var location in storageLocationsList)
+                    {
+                        <option value="@location.StorageLocation">@location.Description</option>
+                    }
+                </select>
 
                 <button type="button"
                         class="btn btn-primary w-100"
                             disabled="@string.IsNullOrEmpty(selectLocation.SelectedLocationID)"
-                            @onclick="HandleSubmit">
+                        @onclick='() => HandleSubmit("countinventory")'>
                         OK
                     </button>
                 </div>
@@ -90,15 +93,15 @@
 
     private SelectLocation selectLocation = new SelectLocation();
 
-    private List<StorageLocations>? storageLocationsList = new List<StorageLocations>();
+    private List<StorageLocations> storageLocationsList = new List<StorageLocations>();
     protected override async Task OnInitializedAsync()
     {
         storageLocationsList = await MasterDataService.GetAllStorageLocations();
     }
 
-    private void HandleSubmit()
+    private void HandleSubmit(string destination)
     {
-        
+        NavManager.NavigateTo($"/{destination}?location={selectLocation.SelectedLocationID}");
     }
 
     private void ToggleSquare(int squareId)
