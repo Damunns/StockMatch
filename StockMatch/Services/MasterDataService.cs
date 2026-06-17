@@ -5,34 +5,43 @@ using StockMatch.Models;
 
 namespace StockMatch.Services;
 
-public class MaterialService
+public class MasterDataService
 {
     private readonly string _connectionString;
 
-    public MaterialService(IConfiguration config)
+    public MasterDataService(IConfiguration config)
     {
         _connectionString = config.GetConnectionString("DEVConnection")
                             ?? throw new Exception("Connection string not found");
     }
 
-    // Get all users
-    public async Task<IEnumerable<Materials>> GetAllMaterials()
+    // Get all Materials
+    public async Task<List<Materials>> GetAllMaterials()
     {
         using (IDbConnection db = new SqlConnection(_connectionString))
         {
             var rawData = await db.QueryAsync<Materials>("SELECT * FROM dbo.Materials");
-            var firstRow = rawData.FirstOrDefault();
-            return rawData;
+            return rawData.ToList();
         }
     }
 
-    // Gets User Details
+    // Get Material Details
     public async Task<Materials?> GetMaterialDetails(string MaterialReq)
     {
         using (IDbConnection db = new SqlConnection(_connectionString))
         {
             var sql = "SELECT * FROM dbo.Materials WHERE Material = @Material";
             return await db.QueryFirstOrDefaultAsync<Materials>(sql, new { Material = MaterialReq });
+        }
+    }
+
+    // Get all Storage Locations
+    public async Task<List<StorageLocations>> GetAllStorageLocations()
+    {
+        using (IDbConnection db = new SqlConnection(_connectionString))
+        {
+            var rawData = await db.QueryAsync<StorageLocations>("SELECT * FROM dbo.StorageLocations");
+            return rawData.ToList();
         }
     }
 }

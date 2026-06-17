@@ -3,7 +3,7 @@
 @using StockMatch.Models
 @using StockMatch.Services
 @using System.ComponentModel.DataAnnotations
-@inject MaterialService MaterialService
+@inject MasterDataService MasterDataService
 
 <PageTitle>Count Inventory</PageTitle>
 
@@ -89,7 +89,7 @@
             return;
         }
 
-        var materialMaster = await MaterialService.GetMaterialDetails(count.Material);
+        var materialMaster = await MasterDataService.GetMaterialDetails(count.Material);
         if (materialMaster != null)
         {
             requiresBatch = !string.IsNullOrWhiteSpace(materialMaster.BatchRequired);
@@ -120,5 +120,13 @@
         requiresSerial = false;
         isMasterDataLoaded = false;
         materialDescription = null;
+    }
+    public class Count
+    {
+        public string StorageLocation { get; set; } = string.Empty;
+        public string Batch { get; set; } = string.Empty;
+        public string Serial { get; set; } = string.Empty;
+        public string Material { get; set; } = string.Empty;
+        public string Quantity { get; set; } = string.Empty;
     }
 }

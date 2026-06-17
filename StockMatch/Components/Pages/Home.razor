@@ -1,14 +1,120 @@
 ﻿@page "/"
+@rendermode InteractiveServer
+@using StockMatch.Services
+@using StockMatch.Models
+@inject MasterDataService MasterDataService
 
 <PageTitle>Home</PageTitle>
 
     <h1>Welcome</h1>
 
-    <div class="page-button-container">
+        <!--
         <a href="/countwip" class="page-button">
             Count WIP
         </a>
+
         <a href="/countinventory" class="page-button">
             Count Inventory
         </a>
+        >-->
+
+
+    <EditForm Model="selectLocation">
+    <div class="page-button-container">
+
+            <div class="action-box @(activeSquare == 1 ? "expanded" : "")">
+
+                <div class="menu-layer">
+                    <label class="form-label">Select Storage Location:</label>
+
+                 
+
+                <select class="form-select" @bind="selectLocation.SelectedLocationID">
+                    <option value="" disabled selected>-- Choose a Storage Location --</option>
+
+                    @foreach (var location in storageLocationsList)
+                    {
+                        <option value="@location.StorageLocation">@location.Description</option>
+                    }
+                </select>
+
+                    <button type="button"
+                            class="btn btn-primary w-100"
+                            disabled="@string.IsNullOrEmpty(selectLocation.SelectedLocationID)"
+                            @onclick="HandleSubmit">
+                        OK
+                    </button>
+                </div>
+
+                <div class="blind-layer" @onclick="() => ToggleSquare(1)">
+                    <div class="blind-content">
+                        Count WIP
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="action-box @(activeSquare == 2 ? "expanded" : "")">
+
+                <div class="menu-layer">
+                <label class="form-label">Select Storage Location:</label>
+
+                <InputSelect @bind-Value="selectLocation.SelectedLocationID" class="form-select mb-3">
+                    <option value="" disabled selected>-- Choose Area --</option>
+                    <option value="BANBURY-A01">Aisle 1 (Raw Materials)</option>
+                    <option value="BANBURY-A02">Aisle 2 (Finished Goods)</option>
+                    <option value="BANBURY-A03">Aisle 3 (Bulk Storage)</option>
+                    </InputSelect>
+
+                <button type="button"
+                        class="btn btn-primary w-100"
+                            disabled="@string.IsNullOrEmpty(selectLocation.SelectedLocationID)"
+                            @onclick="HandleSubmit">
+                        OK
+                    </button>
+                </div>
+
+                <div class="blind-layer" @onclick="() => ToggleSquare(2)">
+                    <div class="blind-content">
+                        Count Inventory
+                    </div>
+                </div>
+
+        </div>
     </div>
+
+    </EditForm>
+
+@code {
+    private int activeSquare = 0;
+
+    private SelectLocation selectLocation = new SelectLocation();
+
+    private List<StorageLocations>? storageLocationsList = new List<StorageLocations>();
+    protected override async Task OnInitializedAsync()
+    {
+        storageLocationsList = await MasterDataService.GetAllStorageLocations();
+    }
+
+    private void HandleSubmit()
+    {
+        
+    }
+
+    private void ToggleSquare(int squareId)
+    {
+        if (activeSquare == squareId)
+        {
+            activeSquare = 0;
+        }
+        else
+        {
+            activeSquare = squareId;
+        }
+    }
+
+    public class SelectLocation
+    {
+        public string SelectedLocationID { get; set; } = string.Empty;
+    }
+}

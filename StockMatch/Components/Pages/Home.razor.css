@@ -8,24 +8,72 @@ h1:focus {
 
 .page-button-container {
     display: flex;
+    flex-wrap: wrap;
     justify-content: center;
     align-content: center;
-    gap: 80px;
+    gap: 30px;
     padding: 30px;
     background-color: aliceblue;
     border-radius: 30px;
 }
 
-.page-button {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 500px;
-    width: 500px;
-    text-decoration: none;
-    background-color: cadetblue;
-    border-radius:30px;
-    font-size:50px;
-    color:white;
+.action-box {
+    position: relative;
+    height: 350px;
+    width: 350px;
+    background-color: #ffffff;
+    border: 1px solid #dee2e6;
+    border-radius: 15px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    overflow: hidden; 
+}
 
+.menu-layer {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 270px;
+    padding: 25px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    box-sizing: border-box;
+}
+
+.blind-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 15px;
+    background-color: navy;
+    cursor: pointer;
+    z-index: 10;
+    transition: height 0.3s ease-in-out;
+}
+
+.blind-content {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-size: 50px;
+    text-decoration: none;
+    color: white;
+    pointer-events: none;
+    user-select: none;
+    transition: 0.3s all;
+}
+
+.action-box.expanded .blind-layer {
+    height: 80px; 
+}
+
+.action-box.expanded .blind-content {
+    justify-content: center;
+    font-size:20px;
 }

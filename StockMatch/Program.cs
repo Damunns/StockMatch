@@ -9,7 +9,7 @@ builder.Services.AddRazorComponents()
 
 // Add Services
 builder.Services.AddScoped<UserService>();
-builder.Services.AddScoped<MaterialService>();
+builder.Services.AddScoped<MasterDataService>();
 
 var app = builder.Build();
 
