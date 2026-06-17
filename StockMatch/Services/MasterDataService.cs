@@ -1,7 +1,8 @@
 ﻿using Dapper;
 using Microsoft.Data.SqlClient;
-using System.Data;
 using StockMatch.Models;
+using System;
+using System.Data;
 
 namespace StockMatch.Services;
 
@@ -11,7 +12,7 @@ public class MasterDataService
 
     public MasterDataService(IConfiguration config)
     {
-        _connectionString = config.GetConnectionString("DEVConnection")
+        _connectionString = config["ConnectionStrings:DEVConnection"]
                             ?? throw new Exception("Connection string not found");
     }
 
