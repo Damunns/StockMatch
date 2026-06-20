@@ -25,12 +25,12 @@ public class UserService
     }
 
     // Gets User Details
-    public async Task<Users?> GetUserDetails(string Username)
+    public async Task<Users?> GetCurrentUserDetails()
     {
         using (IDbConnection db = new SqlConnection(_connectionString))
         {
             var sql = "SELECT * FROM dbo.Users WHERE LogonUsername = @LogonUsername";
-            return await db.QueryFirstOrDefaultAsync<Users>(sql, new { LogonUsername = Username });
+            return await db.QueryFirstOrDefaultAsync<Users>(sql, new { LogonUsername = Environment.UserName });
         }
     }
 }

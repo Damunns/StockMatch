@@ -14,7 +14,7 @@ namespace StockMatch.Models
         public string? SerialNumber { get; set; }
 
         [Required(ErrorMessage = "Quantity is required")]
-        public int CountQty { get; set; }
+        public float CountQty { get; set; }
         public string? Plant { get; set; }
 
         [Required(ErrorMessage = "StorageLocation is required")]

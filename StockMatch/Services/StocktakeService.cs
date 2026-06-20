@@ -37,14 +37,83 @@ public class StocktakeService
             return rawData;
         }
     }
-
-    // Get all Storage Locations
-    public async Task<List<StorageLocations>> GetAllStorageLocations()
+    // Insert an inventory count and return the new identity id
+    public async Task<int> InsertInventoryCount(InventoryCount count)
     {
         using (IDbConnection db = new SqlConnection(_connectionString))
         {
-            var rawData = await db.QueryAsync<StorageLocations>("SELECT * FROM dbo.StorageLocations");
-            return rawData.ToList();
+            var sql = @"
+INSERT INTO [dbo].[InventoryCount]
+    ([Material], [Batch], [SerialNumber], [CountQty], [Plant], [StorageLocation], [Reference], [PhysInvDoc], [PhysInvDocItem], [CountUser], [CountDateTime])
+VALUES
+    (@Material, @Batch, @SerialNumber, @CountQty, @Plant, @StorageLocation, @Reference, @PhysInvDoc, @PhysInvDocItem, @CountUser, @CountDateTime);
+SELECT CAST(SCOPE_IDENTITY() AS INT);
+";
+            var id = await db.QuerySingleAsync<int>(sql, new
+            {
+                Material = count.Material,
+                Batch = count.Batch,
+                SerialNumber = count.SerialNumber,
+                CountQty = count.CountQty,
+                Plant = count.Plant,
+                StorageLocation = count.StorageLocation,
+                Reference = count.Reference,
+                PhysInvDoc = count.PhysInvDoc,
+                PhysInvDocItem = count.PhysInvDocItem,
+                CountUser = count.CountUser,
+                CountDateTime = count.CountDateTime
+            });
+
+            return id;
+        }
+    }
+    // Try to find a matching PhysInvDoc record for the provided material/batch/storage location
+    public async Task<PhysInvDocs?> FindMatchingPhysInvDoc(string material, string batch, string storageLocation)
+    {
+        using (IDbConnection db = new SqlConnection(_connectionString))
+        {
+            var sql = @"
+SELECT TOP 1 *
+FROM   [dbo].[PhysInvDocs]
+WHERE  [StockLocation] = @StorageLocation
+       AND [Material] = @Material
+       AND [Batch] = @Batch
+";
+            var result = await db.QueryFirstOrDefaultAsync<PhysInvDocs>(sql, new { StorageLocation = storageLocation, Material = material, Batch = batch});
+            return result;
+        }
+    }
+
+    // Update the InventoryCounts row with PhysInvDoc and PhysInvDocItem
+    public async Task<int> UpdateInventoryCountDoc(int countId, string physInvDoc, string physInvDocItem)
+    {
+        using (IDbConnection db = new SqlConnection(_connectionString))
+        {
+            var sql = @"
+UPDATE [dbo].[InventoryCount]
+SET [PhysInvDoc] = @PhysInvDoc,
+    [PhysInvDocItem] = @PhysInvDocItem
+WHERE [CountID] = @CountID;
+";
+            var rows = await db.ExecuteAsync(sql, new { PhysInvDoc = physInvDoc, PhysInvDocItem = physInvDocItem, CountID = countId });
+            return rows;
+        }
+    }
+
+    // Update the PhysInvDoc PhysInvDocItem row with Status as "Counted" and the datetime
+    public async Task<int> UpdatePhysInvDocWithCount(DateTime countTime, string physInvDoc, string physInvDocItem)
+    {
+        using (IDbConnection db = new SqlConnection(_connectionString))
+        {
+            var sql = @"
+UPDATE [dbo].[PhysInvDocs]
+SET [CountStatus] = 'Counted',
+    [CountDateTime] = @CountTime
+WHERE [PhysInvDoc] = @PhysInvDoc
+  AND [PhysInvDocItem] = @PhysInvDocItem
+";
+            var rows = await db.ExecuteAsync(sql, new { PhysInvDoc = physInvDoc, PhysInvDocItem = physInvDocItem, CountTime = countTime });
+            return rows;
         }
     }
 }

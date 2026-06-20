@@ -10,6 +10,8 @@ builder.Services.AddRazorComponents()
 // Add Services
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<MasterDataService>();
+builder.Services.AddScoped<StocktakeService>();
+builder.Services.AddScoped<ReportingService>();
 
 var app = builder.Build();
 

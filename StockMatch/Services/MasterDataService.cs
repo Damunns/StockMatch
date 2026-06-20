@@ -45,4 +45,14 @@ public class MasterDataService
             return rawData.ToList();
         }
     }
+
+    // Get all active Storage Locations
+    public async Task<List<StorageLocations>> GetAllActiveStorageLocations()
+    {
+        using (IDbConnection db = new SqlConnection(_connectionString))
+        {
+            var rawData = await db.QueryAsync<StorageLocations>("SELECT * FROM dbo.StorageLocations WHERE Status = 'Active'");
+            return rawData.ToList();
+        }
+    }
 }

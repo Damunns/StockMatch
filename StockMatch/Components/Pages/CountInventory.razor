@@ -10,111 +10,244 @@
 
 <h3>CountInventory</h3>
 
-<EditForm Model="@count" OnValidSubmit="SubmitCount" FormName="CountInventoryForm">
-    <DataAnnotationsValidator />
-    
-    <div class="mb-3">
-        <label>Storage Location</label>
-        <InputText @bind-Value="count.StorageLocation" class="form-control" placeholder="e.g. WH1" />
-        <ValidationMessage For="() => count.StorageLocation" class="text-danger" />
-    </div>
+<EditForm Model="@thiscount" OnValidSubmit="SubmitCount" FormName="CountInventoryForm">
+    <div class="data-grid form-container">
+        <DataAnnotationsValidator />
 
-        <div class="mb-3">
-            <label>Batch</label>
-            <InputText @bind-Value="count.Batch" class="form-control" />
-        <ValidationMessage For="() => count.Batch" class="text-danger" />
-        @if (isMasterDataLoaded)
+            <input  @ref="materialInput"
+                    @bind="thiscount.Material"
+                    @bind:event="oninput" 
+                    @onblur="CheckMaterialData" 
+                    @onkeydown="FocusBatchOnEnter" 
+                    class="form-control"
+                   placeholder="Material" />
+            <ValidationMessage For="() => thiscount.Material" class="text-danger" />
+
+            <input  @ref="batchInput" 
+                    @bind="thiscount.Batch" 
+                    @bind:event="oninput"
+                    @onkeydown="FocusNextOnEnter"
+                   class="form-control"
+                   placeholder="Batch"
+                    disabled='@(string.IsNullOrWhiteSpace(thiscount.Material) ? "disabled" : null)' />
+            <ValidationMessage For="() => thiscount.Batch" class="text-danger" />
+    
+        @if (requiresSerial)
         {
-            <div class="master-data-preview mt-2">
-                <strong>Master data loaded</strong><br />
-                <span class="text-muted">@materialDescription</span>
-            </div>
+                <input  @ref="serialInput"
+                        @bind="thiscount.Serial"
+                        @bind:event="oninput" 
+                       class="form-control"
+                       placeholder="Serial" />
+                <ValidationMessage For="() => thiscount.Serial" class="text-danger" />
         }
-        </div>
-    
-    
-    @if (requiresSerial)
-    {
-        <div class="mb-3">
-            <label>Serial</label>
-            <InputText @bind-Value="count.Serial" class="form-control" />
-            <ValidationMessage For="() => count.Serial" class="text-danger" />
-        </div>
-    }
+        else {
+            <input class="form-control serial-placeholder"
+                    disabled="disabled"/>
+        }
 
-    <div class="mb-3">
-        <label>Quantity</label>
-        <InputNumber @bind-Value="count.Quantity" class="form-control" />
-        <ValidationMessage For="() => count.Quantity" class="text-danger" />
+            <input @ref="qtyInput"
+                   @bind="thiscount.Quantity"
+                    class="form-control" 
+                    disabled="@((requiresSerial || string.IsNullOrWhiteSpace(thiscount.Batch)) ? "disabled" : null)" type="number" step="any" />
+            <ValidationMessage For="() => thiscount.Quantity" class="text-danger" />
+
+        <button type="submit" 
+                class="btn btn-primary submit-button"
+            disabled="@( ((requiresSerial && string.IsNullOrWhiteSpace(thiscount.Serial)) || (!requiresSerial && thiscount.Quantity <= 0)) ? "disabled" : null )">Submit count</button>
+
     </div>
-
-    <button type="submit" class="btn btn-primary">Submit count</button>
-    
-    @if (!string.IsNullOrEmpty(statusMessage))
+    @if (recentCounts.Any())
     {
-        <div class="alert alert-info mt-3">@statusMessage</div>
+        <div class="receipt-tape-container">
+            @foreach (var record in recentCounts)
+            {
+                <div class="data-grid tape-row">
+                        <span class="tape-value">@record.Material</span>
+                        <span class="tape-value">@record.Batch</span>
+                        <span class="tape-value">@record.Serial</span>
+                        <span class="badge rounded-pill w-100 py-2" style="font-size: 0.9rem;">
+                            @record.Quantity
+                        </span>
+                    <button type="button"
+                            class="btn btn-sm btn-outline-secondary w-100"
+                            @onclick="() => EditCount(record.CountID)">
+                        Edit
+                    </button>
+                </div>
+            }
+        </div>
     }
 </EditForm>
 
+
     @code {
-
-    [SupplyParameterFromQuery]
-    public string currentStorageLocation { get; set; } = string.Empty;
-
     protected override async Task OnInitializedAsync()
     {
-        count = new Count();
+        thiscount = new Count();
     }
 
+    private ElementReference materialInput;
+    private ElementReference batchInput;
+    private ElementReference serialInput;
+    private ElementReference qtyInput;
+    private List<Count> recentCounts = new List<Count>();
+
+    [Parameter]
+    [SupplyParameterFromQuery(Name = "location")]
+    public string currentStorageLocation { get; set; } = string.Empty;
+
     [SupplyParameterFromForm(FormName = "CountInventoryForm")]
-    private Count count { get; set; } = new();
-    private string statusMessage = "";
-    private bool requiresBatch = false;
+    private Count thiscount { get; set; } = new();
     private bool requiresSerial = false;
-    private bool isMasterDataLoaded = false;
-    private string? materialDescription;
 
-    private async Task CheckMaterialData()
+    private async Task CheckMaterialData(FocusEventArgs args)
     {
-        var batchMaterial = await StocktakeService.GetBatchMaterial(currentStorageLocation, count.Batch);
-        var materialMaster = await MasterDataService.GetMaterialDetails(batchMaterial.Material);
-
-        if (materialMaster != null)
+        if (!string.IsNullOrWhiteSpace(thiscount.Material))
         {
-            requiresBatch = !string.IsNullOrWhiteSpace(materialMaster.BatchRequired);
-            requiresSerial = materialMaster.SerialProfile == "Z100";
-            materialDescription = materialMaster.Description;
-            isMasterDataLoaded = true;
+            var materialMaster = await MasterDataService.GetMaterialDetails(thiscount.Material);
+
+            if (materialMaster != null)
+            {
+                if (materialMaster.SerialProfile == "Z100")
+                {
+                    requiresSerial = true;
+
+                    await InvokeAsync(StateHasChanged);
+                    await Task.Yield();
+                    thiscount.Quantity = 1;
+                }
+                else
+                {
+                    requiresSerial = false;
+                }
+            }
+        }
+        StateHasChanged();
+    }
+
+    private async Task FocusBatchOnEnter(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter"){await batchInput.FocusAsync();}
+    }
+
+    private async Task FocusNextOnEnter(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {if (requiresSerial){await serialInput.FocusAsync();}
+            else{await qtyInput.FocusAsync();}
+        }
+    }
+
+    private async Task EditCount(int CountID)
+    {
+        var record = recentCounts.FirstOrDefault(c => c.CountID == CountID);
+
+        // Populate the form from the selected recent record
+        thiscount.Material = record.Material ?? string.Empty;
+        thiscount.Batch = record.Batch ?? string.Empty;
+        thiscount.Serial = record.Serial ?? string.Empty;
+        thiscount.Quantity = record.Quantity;
+
+        // Remove the row from the recent counts
+        recentCounts.Remove(record);
+        
+        // If the record has a serial, enable the serial field and disable quantity
+        requiresSerial = !string.IsNullOrWhiteSpace(thiscount.Serial);
+        if (requiresSerial)
+        {
+            // Ensure quantity set to 1 for serialized items and update UI, then focus serial input
+            thiscount.Quantity = 1;
+            await InvokeAsync(StateHasChanged);
+            await Task.Yield();
+            await serialInput.FocusAsync();
         }
         else
         {
-            requiresBatch = false;
-            requiresSerial = false;
-            materialDescription = null;
-            isMasterDataLoaded = false;
+            // Non-serialized items — update UI and focus quantity
+            await InvokeAsync(StateHasChanged);
+            await Task.Yield();
+            await qtyInput.FocusAsync();
         }
-    }
 
-    private async Task SubmitCount()
+        // TODO
+        // Remove the row from the recent counts.
+        // if the serial exists, make the field enabled and the quantity field disabled
+}
+
+private async Task SubmitCount()
+{
+    // Map view model to persistence model and save via service
+    try
     {
-        // This is where you would normally call your API.
-        // If the API call fails due to no connection,
-        // you would save 'count' to LocalStorage instead.
+        var inventoryCount = new InventoryCount
+        {
+            Material = thiscount.Material,
+            Batch = thiscount.Batch,
+            SerialNumber = thiscount.Serial,
+            CountQty = thiscount.Quantity,
+            StorageLocation = currentStorageLocation,
+            CountUser = Environment.UserName,
+            CountDateTime = DateTime.Now
+        };
 
-        statusMessage = $"Success: Batch {count.Batch} recorded at {count.StorageLocation}.";
+        // Insert the count and get the new CountID
+        var newCountID = await StocktakeService.InsertInventoryCount(inventoryCount);
 
-        // Reset the form for the next count
-        count = new Count();
-        requiresBatch = false;
-        requiresSerial = false;
-        isMasterDataLoaded = false;
-        materialDescription = null;
+        // Show the count to the user on the fading receipt tape
+        recentCounts.Insert(0, new Count
+        {
+            StorageLocation = currentStorageLocation,
+            Material = thiscount.Material,
+            Batch = thiscount.Batch,
+            Serial = thiscount.Serial,
+            Quantity = thiscount.Quantity,
+            CountID = newCountID
+        });
+        if (recentCounts.Count > 10)
+        {
+            recentCounts.RemoveAt(recentCounts.Count - 1);
+        }
+
+        // Try to find a matching PhysInvDoc for Material/Batch/Serial at this storage location
+        var phys = await StocktakeService.FindMatchingPhysInvDoc(inventoryCount.Material ?? string.Empty,
+                                                                    inventoryCount.Batch ?? string.Empty,
+                                                                    inventoryCount.StorageLocation ?? string.Empty);
+
+        if (phys != null)
+        {
+            // Update the InventoryCounts row with the found PhysInvDoc and PhysInvDocItem
+            await StocktakeService.UpdateInventoryCountDoc(newCountID, phys.PhysInvDoc, phys.PhysInvDocItem ?? string.Empty);
+
+            // Update the PhysInvDoc PhysInvDocItem row with Status as "Counted" and the count datetime
+            await StocktakeService.UpdatePhysInvDocWithCount(inventoryCount.CountDateTime, phys.PhysInvDoc, phys.PhysInvDocItem ?? string.Empty);
+        }
+        else
+        {
+            // What do I do with counts that we don't expect? (that don't have a matching PhysInvDoc)
+            // possibly update the reference with a special value to indicate that it was counted but not expected
+        }
+
     }
-    public class Count
+    catch (Exception ex)
     {
-        public string StorageLocation { get; set; } = string.Empty;
-        public string Batch { get; set; } = string.Empty;
-        public string Serial { get; set; } = string.Empty;
-        public int Quantity { get; set; }
+        Console.WriteLine("Error submitting count: " + ex.Message);
     }
+    // Reset the form for the next count
+    thiscount = new Count();
+    requiresSerial = false;
+    StateHasChanged(); 
+    await Task.Yield(); 
+    await materialInput.FocusAsync();
+}
+
+public class Count
+{
+    public string StorageLocation { get; set; } = string.Empty;
+    public string Material { get; set; } = string.Empty;
+    public string Batch { get; set; } = string.Empty;
+    public string Serial { get; set; } = string.Empty;
+    public float Quantity { get; set; }
+    public int CountID { get; set; }
+}
 }

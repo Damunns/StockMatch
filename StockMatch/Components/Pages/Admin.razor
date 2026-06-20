@@ -1,0 +1,235 @@
+﻿@page "/admin"
+@rendermode InteractiveServer
+@implements IAsyncDisposable
+@using StockMatch.Services
+@using StockMatch.Models
+@inject ReportingService ReportingService
+
+<h3>Administrator dashboard</h3>
+<div class="admin-grid" style="display:flex;gap:2rem;align-items:flex-start;">
+    <div class="inventory-list" style="flex:1;min-width:420px;">
+        <h4>Inventory counts (recent)</h4>
+        @if (lastUpdated.HasValue)
+        {
+            <div style="font-size:0.9rem;color:#666;margin-bottom:0.5rem;">
+                Last updated: @lastUpdated.Value.ToString("G")
+            </div>
+        }
+        @if (inventoryCounts == null)
+        {
+            <p><em>Loading...</em></p>
+        }
+        else if (!inventoryCounts.Any())
+        {
+            <p>No inventory counts found.</p>
+        }
+        else
+        {
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>CountID</th>
+                        <th>Material</th>
+                        <th>Batch</th>
+                        <th>Qty</th>
+                        <th>Location</th>
+                        <th>PhysInvDoc</th>
+                        <th>User</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var c in inventoryCounts)
+                    {
+                        <tr>
+                            <td>@c.CountID</td>
+                            <td>@c.Material</td>
+                            <td>@c.Batch</td>
+                            <td>@c.CountQty</td>
+                            <td>@c.StorageLocation</td>
+                            <td>@c.PhysInvDoc</td>
+                            <td>@c.CountUser</td>
+                            <td>@c.CountDateTime.ToString("g")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+
+    <div class="report-summary" style="width:320px;">
+        <h4>Physical inventory progress</h4>
+
+        @if (!physInvLoaded)
+        {
+            <p><em>Loading...</em></p>
+        }
+        else
+        {
+            <div style="display:flex;flex-direction:column;align-items:center;gap:0.5rem;">
+                <svg viewBox="0 0 42 42" width="180" height="180" style="transform:rotate(-90deg);">
+                    <!-- background ring (not-counted) -->
+                    <circle r="15.91549430918954" cx="21" cy="21" fill="transparent" stroke="#e6e6e6" stroke-width="8"></circle>
+
+                    <!-- counted slice -->
+                    <circle r="15.91549430918954" cx="21" cy="21" fill="transparent"
+                            stroke="#4CAF50" stroke-width="8"
+                            stroke-dasharray="@($"{countedPercent:F2} {100 - countedPercent:F2}")"
+                            stroke-linecap="round"></circle>
+                </svg>
+
+                <div style="transform:rotate(0deg);text-align:center;">
+                    <div style="font-size:1.1rem;font-weight:600;">@countedPhysInvDocs / @totalPhysInvDocs counted</div>
+                    <div style="color:#666;">@countedPercent:F1% complete</div>
+                </div>
+
+                <div style="width:100%;margin-top:0.75rem;">
+                    <div style="display:flex;justify-content:space-between;">
+                        <small><span style="display:inline-block;width:12px;height:12px;background:#4CAF50;margin-right:6px;"></span> Counted</small>
+                        <small>@countedPhysInvDocs</small>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;margin-top:6px;">
+                        <small><span style="display:inline-block;width:12px;height:12px;background:#e6e6e6;margin-right:6px;"></span> Not counted</small>
+                        <small>@notCountedPhysInvDocs</small>
+                    </div>
+                </div>
+            </div>
+
+            <hr />
+
+            <h5 style="margin-top:0.5rem;">All PhysInvDocs (recent)</h5>
+            @if (physInvDocs == null || !physInvDocs.Any())
+            {
+                <p><em>No phys inv docs found.</em></p>
+            }
+            else
+            {
+                <div style="max-height:200px;overflow:auto;">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr><th>Doc</th><th>Item</th><th>Location</th><th>Status</th></tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var d in physInvDocs.Take(200))
+                            {
+                                <tr>
+                                    <td>@d.PhysInvDoc</td>
+                                    <td>@d.PhysInvDocItem</td>
+                                    <td>@d.StorageLocation</td>
+                                    <td>@d.CountStatus</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        }
+    </div>
+</div>
+@code {
+    private List<InventoryCount>? inventoryCounts;
+    private List<PhysInvDocs>? physInvDocs;
+    private int totalPhysInvDocs;
+    private int countedPhysInvDocs;
+    private int notCountedPhysInvDocs;
+    private bool physInvLoaded = false;
+    private DateTime? lastUpdated;
+
+
+    // Periodic refresh support
+    private PeriodicTimer? _timer;
+    private CancellationTokenSource? _cts;
+    private readonly TimeSpan _refreshInterval = TimeSpan.FromSeconds(5); // change as needed
+
+    private double countedPercent => totalPhysInvDocs == 0 ? 0.0 : (double)countedPhysInvDocs / totalPhysInvDocs * 100.0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // initial load
+        await LoadDashboardData();
+
+        // start polling loop
+        _cts = new CancellationTokenSource();
+        _timer = new PeriodicTimer(_refreshInterval);
+
+        // fire-and-forget background loop; use InvokeAsync for UI updates
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                while (await _timer!.WaitForNextTickAsync(_cts.Token))
+                {
+                    await RefreshCountsLoopSafe();
+                }
+            }
+            catch (OperationCanceledException) { /* expected on dispose */ }
+        });
+    }
+
+    private async Task LoadDashboardData()
+    {
+        inventoryCounts = await ReportingService.GetAllInventoryCounts(limit: 500);
+        lastUpdated = DateTime.Now;
+
+        var summary = await ReportingService.GetPhysInvDocsSummary();
+        totalPhysInvDocs = summary.total;
+        countedPhysInvDocs = summary.counted;
+        notCountedPhysInvDocs = summary.notCounted;
+        physInvDocs = await ReportingService.GetAllPhysInvDocs();
+        physInvLoaded = true;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    // Only refresh the inventory counts and summary to keep UI responsive
+    private async Task RefreshCountsLoopSafe()
+    {
+        try
+        {
+            var newCounts = await ReportingService.GetAllInventoryCounts(limit: 500);
+            var summary = await ReportingService.GetPhysInvDocsSummary();
+
+            // small change detection to avoid unnecessary UI updates
+            var changed = inventoryCounts == null
+                          || newCounts.Count != inventoryCounts.Count
+                          || (newCounts.Count > 0 && newCounts[0].CountID != inventoryCounts[0].CountID);
+
+            // replace current list (keep even if unchanged if you prefer)
+            inventoryCounts = newCounts;
+
+            // always update summary numbers
+            totalPhysInvDocs = summary.total;
+            countedPhysInvDocs = summary.counted;
+            notCountedPhysInvDocs = summary.notCounted;
+
+            // update last-updated timestamp on every successful poll
+            lastUpdated = DateTime.Now;
+
+            // marshal UI update
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception)
+        {
+            // optionally log
+        }
+    }
+
+    // Clean up timer when component is disposed
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            _cts?.Cancel();
+            if (_timer != null)
+            {
+                _timer.Dispose();
+                _timer = null;
+            }
+        }
+        catch { }
+
+        _cts?.Dispose();
+        _cts = null;
+
+        await Task.CompletedTask;
+    }
+}

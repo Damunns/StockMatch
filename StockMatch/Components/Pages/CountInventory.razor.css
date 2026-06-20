@@ -34,6 +34,13 @@ h1 {
     gap: 10px;
 }
 
+.data-grid {
+    display: grid;
+    grid-template-columns: 2fr 2fr 2fr 2fr 1fr;
+    gap: 15px;
+    align-items: end;
+}
+
 .status-bar {
     font-size: 0.8rem;
     color: #64748b;
@@ -76,34 +83,8 @@ input, select {
 
     input:focus {
         border-color: var(--primary);
-        ring: 2px solid #bfdbfe;
     }
 
-.master-data-preview {
-    background: var(--accent);
-    padding: 10px;
-    border-radius: 6px;
-    margin-top: 5px;
-    font-size: 0.85rem;
-    border-left: 4px solid var(--primary);
-}
-
-.btn-submit {
-    width: 100%;
-    padding: 14px;
-    background-color: var(--primary);
-    color: white;
-    border: none;
-    border-radius: 6px;
-    font-size: 1rem;
-    font-weight: 600;
-    cursor: pointer;
-    margin-top: 1rem;
-}
-
-    .btn-submit:hover {
-        background-color: #1d4ed8;
-    }
 
 .badge {
     display: inline-block;
@@ -113,4 +94,45 @@ input, select {
     color: #166534;
     font-size: 0.75rem;
     margin-left: 8px;
+}
+.serial-placeholder {
+    width: 206px;
+}
+
+.form-container {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    padding:5px;
+}
+
+.submit-button {
+    height: 50px;
+    text-wrap:nowrap;
+}
+
+.receipt-tape-container {
+    max-height: 350px;
+    overflow: hidden; 
+    -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 60%, rgba(0,0,0,0) 100%);
+    mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 60%, rgba(0,0,0,0) 100%);
+    margin-top: 0.5rem;
+    padding-bottom: 2rem;
+}
+
+.tape-row {
+    align-items: center;
+    padding: 5px;
+    background-color: #E7E8E9;
+    margin-bottom: 5px;
+    border-radius: 10px;
+}
+
+.tape-value {
+    width:100%;
+    padding: 10px 15px;
+    border-radius: 10px;
+    background-color: #f8f9fa;
+    font-size: 0.95rem;
+    color: #212529;
 }

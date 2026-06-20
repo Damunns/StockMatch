@@ -3,6 +3,7 @@
 @using StockMatch.Services
 @using StockMatch.Models
 @inject MasterDataService MasterDataService
+@inject UserService UserService
 @inject NavigationManager NavManager
 
 <PageTitle>Home</PageTitle>
@@ -65,7 +66,7 @@
 
                     @foreach (var location in storageLocationsList)
                     {
-                        <option value="@location.StorageLocation">@location.Description</option>
+                        <option value="@location.StorageLocation">@location.StorageLocation - @location.Description</option>
                     }
                 </select>
 
@@ -89,14 +90,21 @@
     </EditForm>
 
 @code {
+    private Users? userDetails;
     private int activeSquare = 0;
-
     private SelectLocation selectLocation = new SelectLocation();
-
     private List<StorageLocations> storageLocationsList = new List<StorageLocations>();
+
     protected override async Task OnInitializedAsync()
     {
-        storageLocationsList = await MasterDataService.GetAllStorageLocations();
+        userDetails = await UserService.GetCurrentUserDetails();
+        if (userDetails.Access == "Admin")
+        {
+            NavManager.NavigateTo("/admin");
+            return;
+        }
+
+        storageLocationsList = await MasterDataService.GetAllActiveStorageLocations();
     }
 
     private void HandleSubmit(string destination)
