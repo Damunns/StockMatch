@@ -44,9 +44,9 @@ public class StocktakeService
         {
             var sql = @"
 INSERT INTO [dbo].[InventoryCount]
-    ([Material], [Batch], [SerialNumber], [CountQty], [Plant], [StorageLocation], [Reference], [PhysInvDoc], [PhysInvDocItem], [CountUser], [CountDateTime])
+    ([Material], [Batch], [SerialNumber], [CountQty], [Plant], [StorageLocation], [Reference], [PhysInvDoc], [PhysInvDocItem], [CountUser], [CountDateTime], [CountStatus])
 VALUES
-    (@Material, @Batch, @SerialNumber, @CountQty, @Plant, @StorageLocation, @Reference, @PhysInvDoc, @PhysInvDocItem, @CountUser, @CountDateTime);
+    (@Material, @Batch, @SerialNumber, @CountQty, @Plant, @StorageLocation, @Reference, @PhysInvDoc, @PhysInvDocItem, @CountUser, @CountDateTime, 'Counted');
 SELECT CAST(SCOPE_IDENTITY() AS INT);
 ";
             var id = await db.QuerySingleAsync<int>(sql, new

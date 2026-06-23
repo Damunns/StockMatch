@@ -24,5 +24,6 @@ namespace StockMatch.Models
         public string? PhysInvDocItem { get; set; }
         public string? CountUser { get; set; }
         public DateTime CountDateTime { get; set; }
+        public string? CountStatus { get; set; }
     }
 }

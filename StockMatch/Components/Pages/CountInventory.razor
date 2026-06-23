@@ -5,6 +5,9 @@
 @using System.ComponentModel.DataAnnotations
 @inject MasterDataService MasterDataService
 @inject StocktakeService StocktakeService
+@inject ReportingService ReportingService
+@inject UserService UserService
+@inject NavigationManager NavManager
 
 <PageTitle>Count Inventory</PageTitle>
 
@@ -82,16 +85,13 @@
 
 
     @code {
-    protected override async Task OnInitializedAsync()
-    {
-        thiscount = new Count();
-    }
 
     private ElementReference materialInput;
     private ElementReference batchInput;
     private ElementReference serialInput;
     private ElementReference qtyInput;
     private List<Count> recentCounts = new List<Count>();
+    private Users? userDetails;
 
     [Parameter]
     [SupplyParameterFromQuery(Name = "location")]
@@ -100,6 +100,19 @@
     [SupplyParameterFromForm(FormName = "CountInventoryForm")]
     private Count thiscount { get; set; } = new();
     private bool requiresSerial = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+
+        userDetails = await UserService.GetCurrentUserDetails();
+        if (userDetails.Access == "Admin")
+        {
+            NavManager.NavigateTo("/admin");
+            return;
+        }
+
+        thiscount = new Count();
+    }
 
     private async Task CheckMaterialData(FocusEventArgs args)
     {
@@ -151,6 +164,9 @@
 
         // Remove the row from the recent counts
         recentCounts.Remove(record);
+
+        // TODO: update the row in the database to mark the [CountStatus] as "Count - Replaced by User"
+        await ReportingService.UpdateInventoryCountStatus(CountID, "Count - Replaced by User");
         
         // If the record has a serial, enable the serial field and disable quantity
         requiresSerial = !string.IsNullOrWhiteSpace(thiscount.Serial);
@@ -169,10 +185,6 @@
             await Task.Yield();
             await qtyInput.FocusAsync();
         }
-
-        // TODO
-        // Remove the row from the recent counts.
-        // if the serial exists, make the field enabled and the quantity field disabled
 }
 
 private async Task SubmitCount()

@@ -10,7 +10,8 @@
         public string? StorageLocation { get; set; }
         public string? Reference { get; set; }
         public string? CountUser { get; set; }
-        public string? CountDateTime { get; set; }
+        public DateTime CountDateTime { get; set; }
+        public string? CountStatus { get; set; }
 
     }
 }

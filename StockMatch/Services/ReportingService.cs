@@ -20,9 +20,24 @@ public class ReportingService
     {
         using (IDbConnection db = new SqlConnection(_connectionString))
         {
-            var sql = $"SELECT TOP (@Limit) * FROM dbo.InventoryCount ORDER BY CountDateTime DESC";
+            var sql = $"SELECT TOP (@Limit) * FROM dbo.InventoryCount WHERE [CountStatus] = 'Counted' ORDER BY CountDateTime DESC";
             var raw = await db.QueryAsync<InventoryCount>(sql, new { Limit = limit });
             return raw.ToList();
+        }
+    }
+
+    // Update CountStatus for an InventoryCount by CountID
+    public async Task<int> UpdateInventoryCountStatus(int countId, string newStatus)
+    {
+        using (IDbConnection db = new SqlConnection(_connectionString))
+        {
+            var sql = @"
+UPDATE dbo.InventoryCount
+SET CountStatus = @NewStatus
+WHERE CountID = @CountID;
+";
+            var rows = await db.ExecuteAsync(sql, new { NewStatus = newStatus, CountID = countId });
+            return rows;
         }
     }
 
@@ -45,6 +60,31 @@ public class ReportingService
             var counted = await db.ExecuteScalarAsync<int>("SELECT COUNT(1) FROM dbo.PhysInvDocs WHERE CountStatus = 'Counted'");
             var notCounted = Math.Max(0, total - counted);
             return (total, counted, notCounted);
+        }
+    }
+
+    // Per-storage-location summary: total and counted
+    public class PhysInvLocationSummary
+    {
+        public string StorageLocation { get; set; } = string.Empty;
+        public int Total { get; set; }
+        public int Counted { get; set; }
+    }
+
+    public async Task<List<PhysInvLocationSummary>> GetPhysInvLocationSummaries()
+    {
+        using (IDbConnection db = new SqlConnection(_connectionString))
+        {
+            var sql = @"
+SELECT
+    ISNULL([StockLocation], '') AS StorageLocation,
+    COUNT(1) AS Total,
+    SUM(CASE WHEN [CountStatus] = 'Counted' THEN 1 ELSE 0 END) AS Counted
+FROM dbo.PhysInvDocs
+GROUP BY ISNULL([StockLocation], '')
+";
+            var raw = await db.QueryAsync<PhysInvLocationSummary>(sql);
+            return raw.ToList();
         }
     }
 }

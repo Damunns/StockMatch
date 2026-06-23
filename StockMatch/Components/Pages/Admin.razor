@@ -4,6 +4,9 @@
 @using StockMatch.Services
 @using StockMatch.Models
 @inject ReportingService ReportingService
+@inject MasterDataService MasterDataService
+@inject UserService UserService
+@inject NavigationManager NavManager
 
 <h3>Administrator dashboard</h3>
 <div class="admin-grid" style="display:flex;gap:2rem;align-items:flex-start;">
@@ -36,6 +39,7 @@
                         <th>PhysInvDoc</th>
                         <th>User</th>
                         <th>Date</th>
+                        <th style="width:48px;">Action</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -49,7 +53,13 @@
                             <td>@c.StorageLocation</td>
                             <td>@c.PhysInvDoc</td>
                             <td>@c.CountUser</td>
-                            <td>@c.CountDateTime.ToString("g")</td>
+                            <td>@c.CountDateTime.ToString("G")</td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-danger" title="Mark as removed"
+                                        @onclick="() => RemoveInventoryCount(c)">
+                                    &times;
+                                </button>
+                            </td>
                         </tr>
                     }
                 </tbody>
@@ -58,7 +68,7 @@
     </div>
 
     <div class="report-summary" style="width:320px;">
-        <h4>Physical inventory progress</h4>
+        <h4>Physical Inventory Document Progress</h4>
 
         @if (!physInvLoaded)
         {
@@ -80,7 +90,7 @@
 
                 <div style="transform:rotate(0deg);text-align:center;">
                     <div style="font-size:1.1rem;font-weight:600;">@countedPhysInvDocs / @totalPhysInvDocs counted</div>
-                    <div style="color:#666;">@countedPercent:F1% complete</div>
+                        <div style="color:#666;">@($"{countedPercent:F1}% complete")</div>
                 </div>
 
                 <div style="width:100%;margin-top:0.75rem;">
@@ -125,15 +135,83 @@
             }
         }
     </div>
+    <div class="storage-list" style="width:420px;">
+        <h4>Storage locations</h4>
+
+        @if (storageLocations == null)
+        {
+            <p><em>Loading...</em></p>
+        }
+        else if (!storageLocations.Any())
+        {
+            <p>No storage locations found.</p>
+        }
+        else
+        {
+            <div style="max-height:520px;overflow:auto;">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Location</th>
+                            <th style="width:72px">Progress</th>
+                            <th>Description</th>
+                            <th>Status</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var loc in storageLocations)
+                        {
+                            var key = loc.StorageLocation ?? string.Empty;
+                            locationSummaries.TryGetValue(key, out var sum);
+                            var total = sum.total;
+                            var counted = sum.counted;
+                            var pct = total == 0 ? 0.0 : (double)counted / total * 100.0;
+
+                            <tr>
+                                <td style="vertical-align:middle;">@loc.StorageLocation</td>
+
+                                <td style="vertical-align:middle;">
+                                    @* small SVG donut: 32x32 *@
+                                    <div style="width:48px;">
+                                        <svg viewBox="0 0 42 42" width="48" height="48" style="transform:rotate(-90deg);">
+                                            <circle r="15.91549430918954" cx="21" cy="21" fill="transparent" stroke="#e6e6e6" stroke-width="6"></circle>
+                                            @if (total > 0)
+                                            {
+                                                var dash = $"{pct:F2} {100 - pct:F2}";
+                                                <circle r="15.91549430918954" cx="21" cy="21" fill="transparent" stroke="#4CAF50" stroke-width="6" stroke-dasharray="@dash" stroke-linecap="round"></circle>
+                                            }
+                                        </svg>
+                                    </div>
+                                </td>
+
+                                <td style="vertical-align:middle;">@loc.Description</td>
+                                <td style="vertical-align:middle;">@loc.Status</td>
+                                <td style="vertical-align:middle;">
+                                    <button class="btn btn-sm btn-outline-secondary"
+                                            @onclick="() => ToggleLocationStatus(loc)">
+                                        @(loc.Status == "Active" ? "Set Inactive" : "Set Active")
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
 </div>
 @code {
     private List<InventoryCount>? inventoryCounts;
     private List<PhysInvDocs>? physInvDocs;
+    private List<StorageLocations>? storageLocations;
+    private Dictionary<string, (int total, int counted)> locationSummaries = new();
     private int totalPhysInvDocs;
     private int countedPhysInvDocs;
     private int notCountedPhysInvDocs;
     private bool physInvLoaded = false;
     private DateTime? lastUpdated;
+    private Users? userDetails;
 
 
     // Periodic refresh support
@@ -145,6 +223,12 @@
 
     protected override async Task OnInitializedAsync()
     {
+        userDetails = await UserService.GetCurrentUserDetails();
+        if (userDetails.Access != "Admin")
+        {
+            NavManager.NavigateTo("/");
+            return;
+        }
         // initial load
         await LoadDashboardData();
 
@@ -176,6 +260,14 @@
         countedPhysInvDocs = summary.counted;
         notCountedPhysInvDocs = summary.notCounted;
         physInvDocs = await ReportingService.GetAllPhysInvDocs();
+
+        // load storage locations for the admin column
+        storageLocations = await MasterDataService.GetAllStorageLocations();
+
+        // load per-location summaries and populate lookup
+        var locSums = await ReportingService.GetPhysInvLocationSummaries();
+        locationSummaries = locSums.ToDictionary(x => x.StorageLocation, x => (x.Total, x.Counted));
+
         physInvLoaded = true;
         await InvokeAsync(StateHasChanged);
     }
@@ -188,11 +280,6 @@
             var newCounts = await ReportingService.GetAllInventoryCounts(limit: 500);
             var summary = await ReportingService.GetPhysInvDocsSummary();
 
-            // small change detection to avoid unnecessary UI updates
-            var changed = inventoryCounts == null
-                          || newCounts.Count != inventoryCounts.Count
-                          || (newCounts.Count > 0 && newCounts[0].CountID != inventoryCounts[0].CountID);
-
             // replace current list (keep even if unchanged if you prefer)
             inventoryCounts = newCounts;
 
@@ -200,6 +287,11 @@
             totalPhysInvDocs = summary.total;
             countedPhysInvDocs = summary.counted;
             notCountedPhysInvDocs = summary.notCounted;
+
+            // refresh storage locations as well (keeps UI consistent)
+            storageLocations = await MasterDataService.GetAllStorageLocations();
+            var locSums = await ReportingService.GetPhysInvLocationSummaries();
+            locationSummaries = locSums.ToDictionary(x => x.StorageLocation, x => (x.Total, x.Counted));
 
             // update last-updated timestamp on every successful poll
             lastUpdated = DateTime.Now;
@@ -211,6 +303,36 @@
         {
             // optionally log
         }
+    }
+
+    private async Task ToggleLocationStatus(StorageLocations loc)
+    {
+        if (loc == null || string.IsNullOrEmpty(loc.StorageLocation))
+            return;
+
+        var current = loc.Status ?? string.Empty;
+        var newStatus = current.Equals("Active", StringComparison.OrdinalIgnoreCase) ? "Inactive" : "Active";
+
+        var rows = await MasterDataService.UpdateStorageLocationStatus(loc.StorageLocation!, newStatus);
+        if (rows > 0)
+        {
+            // update local model for immediate feedback
+            loc.Status = newStatus;
+            await InvokeAsync(StateHasChanged);
+        }
+        else
+        {
+            // optional: reload full list if update failed
+            storageLocations = await MasterDataService.GetAllStorageLocations();
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task RemoveInventoryCount(InventoryCount c)
+    {
+        var rows = await ReportingService.UpdateInventoryCountStatus(c.CountID, "Count - Removed by Admin");
+        inventoryCounts = await ReportingService.GetAllInventoryCounts(limit: 500);
+        await InvokeAsync(StateHasChanged);
     }
 
     // Clean up timer when component is disposed

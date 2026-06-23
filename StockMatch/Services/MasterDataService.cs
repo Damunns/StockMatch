@@ -55,4 +55,19 @@ public class MasterDataService
             return rawData.ToList();
         }
     }
+
+    // Update a storage location status (Active/Inactive)
+    public async Task<int> UpdateStorageLocationStatus(string storageLocation, string status)
+    {
+        using (IDbConnection db = new SqlConnection(_connectionString))
+        {
+            var sql = @"
+UPDATE [dbo].[StorageLocations]
+SET [Status] = @Status
+WHERE [StorageLocation] = @StorageLocation;
+";
+            var rows = await db.ExecuteAsync(sql, new { Status = status, StorageLocation = storageLocation });
+            return rows;
+        }
+    }
 }

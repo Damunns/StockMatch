@@ -1,9 +1,31 @@
 ﻿@page "/countwip"
+@rendermode InteractiveServer
+@using StockMatch.Models
+@using StockMatch.Services
+@using System.ComponentModel.DataAnnotations
+@inject MasterDataService MasterDataService
+@inject StocktakeService StocktakeService
+@inject ReportingService ReportingService
+@inject UserService UserService
+@inject NavigationManager NavManager
 
 <PageTitle>Count WIP</PageTitle>
 
 <h3>CountWIP</h3>
 
 @code {
+    private Users? userDetails;
+
+    protected override async Task OnInitializedAsync()
+    {
+
+        userDetails = await UserService.GetCurrentUserDetails();
+        if (userDetails.Access == "Admin")
+        {
+            NavManager.NavigateTo("/admin");
+            return;
+        }
+
+    }
 
 }
