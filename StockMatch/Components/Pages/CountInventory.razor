@@ -9,9 +9,9 @@
 @inject UserService UserService
 @inject NavigationManager NavManager
 
-<PageTitle>Count Inventory</PageTitle>
+<PageTitle>Count Inventory @currentStorageLocation</PageTitle>
 
-<h3>CountInventory</h3>
+<h3>Count Inventory in @currentStorageLocation</h3>
 
 <EditForm Model="@thiscount" OnValidSubmit="SubmitCount" FormName="CountInventoryForm">
     <div class="data-grid form-container">
